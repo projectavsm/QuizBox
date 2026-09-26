@@ -1,0 +1,48 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Settings {
+  id              Int      @id @default(1)
+  examTitle       String   @default("General Examination")
+  durationMinutes Int      @default(30)
+  isExamActive    Boolean  @default(true)
+}
+
+model Student {
+  id          Int          @id @default(autoincrement())
+  name        String
+  gradeClass  String
+  section     String
+  rollNumber  String
+  createdAt   DateTime     @default(now())
+  submission  Submission?
+
+  @@unique([rollNumber, gradeClass, section])
+}
+
+model Question {
+  id            Int      @id @default(autoincrement())
+  questionText  String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String   // "A", "B", "C", or "D"
+  createdAt     DateTime @default(now())
+}
+
+model Submission {
+  id          Int      @id @default(autoincrement())
+  studentId   Int      @unique
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score       Int
+  total       Int
+  answersJson String   // Stores student selections as JSON
+  submittedAt DateTime @default(now())
+}

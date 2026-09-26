@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing / Cache
+.next/
+out/
+build/
+
+# Database & Environment Variables (STRICT PRIVACY)
+.env
+.env*.local
+prisma/*.db
+prisma/*.db-journal
+
+# OS & Logs
+*.log
+.DS_Store
