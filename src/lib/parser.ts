@@ -1,3 +1,9 @@
+import mammoth from 'mammoth';
+
+// Use the implementation entry point to avoid pdf-parse loading its test fixture at import time.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Promise<{ text?: string }>;
+
 export interface ParsedQuestion {
   questionText: string;
   optionA: string;
@@ -5,7 +11,26 @@ export interface ParsedQuestion {
   optionC: string;
   optionD: string;
   correctAnswer: 'A' | 'B' | 'C' | 'D';
-  category?: string;
+  correctOption: string;
+  subject: string;
+  gradeClass: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  marks: number;
+}
+
+const defaultMetadata = {
+  subject: 'General',
+  gradeClass: 'All',
+  difficulty: 'Medium' as const,
+  marks: 1,
+};
+
+function createQuestion(
+  questionText: string,
+  options: Record<'A' | 'B' | 'C' | 'D', string>,
+  correctAnswer: ParsedQuestion['correctAnswer'],
+): ParsedQuestion {
+  return { questionText, optionA: options.A, optionB: options.B, optionC: options.C, optionD: options.D, correctAnswer, correctOption: correctAnswer, ...defaultMetadata };
 }
 
 export function parseCSV(csvContent: string): ParsedQuestion[] {
@@ -54,7 +79,8 @@ export function parseCSV(csvContent: string): ParsedQuestion[] {
         optionC: cols[cIndex] || '',
         optionD: cols[dIndex] || '',
         correctAnswer: validAns,
-        category: 'Imported CSV',
+        correctOption: validAns,
+        ...defaultMetadata,
       });
     }
   }
@@ -63,41 +89,106 @@ export function parseCSV(csvContent: string): ParsedQuestion[] {
 }
 
 export function parseFormattedText(textContent: string): ParsedQuestion[] {
-  const blocks = textContent.split(/\n\s*\n/).filter((block) => block.trim().length > 0);
+  return parseRawTextToQuestions(textContent);
+}
+
+export function parseDocumentQuestionText(textContent: string): ParsedQuestion[] {
+  return parseRawTextToQuestions(textContent);
+}
+
+export async function parsePdfBuffer(buffer: Buffer): Promise<string> {
+  const data = await pdfParse(buffer);
+  return data.text || '';
+}
+
+export async function parseDocxBuffer(buffer: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer });
+  return result.value || '';
+}
+
+export function parseRawTextToQuestions(text: string): ParsedQuestion[] {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const questions: ParsedQuestion[] = [];
+  const answerKeyMap: Record<number, string> = {};
 
-  for (const block of blocks) {
-    const lines = block.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    let questionText = '';
-    let optionA = '';
-    let optionB = '';
-    let optionC = '';
-    let optionD = '';
-    let correctAnswer: ParsedQuestion['correctAnswer'] = 'A';
+  const answerKeyPattern = /\b(\d+)[\.\s:-]+([A-D])\b/gi;
+  const extractAnswerKeyMappings = (line: string): RegExpMatchArray[] => Array.from(line.matchAll(answerKeyPattern));
 
-    for (const line of lines) {
-      if (/^(Q:|Question:|\d+[\.\)])/i.test(line)) {
-        questionText = line.replace(/^(Q:|Question:|\d+[\.\)])/i, '').trim();
-      } else if (/^A[\.\)]/i.test(line)) {
-        optionA = line.replace(/^A[\.\)]/i, '').trim();
-      } else if (/^B[\.\)]/i.test(line)) {
-        optionB = line.replace(/^B[\.\)]/i, '').trim();
-      } else if (/^C[\.\)]/i.test(line)) {
-        optionC = line.replace(/^C[\.\)]/i, '').trim();
-      } else if (/^D[\.\)]/i.test(line)) {
-        optionD = line.replace(/^D[\.\)]/i, '').trim();
-      } else if (/^(Answer:|Correct:)/i.test(line)) {
-        const answer = line.replace(/^(Answer:|Correct:)/i, '').trim().toUpperCase();
-        if (['A', 'B', 'C', 'D'].includes(answer)) {
-          correctAnswer = answer as ParsedQuestion['correctAnswer'];
-        }
+  const isAnswerKeyLine = (line: string, matches: RegExpMatchArray[]) => {
+    if (matches.length < 2) return false;
+    const remainder = line
+      .replace(/^(?:answer\s*key|answers?)\s*[:\-]?\s*/i, '')
+      .replace(answerKeyPattern, '')
+      .replace(/[\s,;|]+/g, '');
+    return remainder.length === 0;
+  };
+
+  let currentQuestion: Partial<ParsedQuestion> | null = null;
+  const saveCurrent = () => {
+    if (currentQuestion?.questionText) questions.push(finalizeQuestion(currentQuestion));
+  };
+
+  for (const line of lines) {
+    const answerKeyMatches = extractAnswerKeyMappings(line);
+    if (isAnswerKeyLine(line, answerKeyMatches)) {
+      for (const match of answerKeyMatches) {
+        answerKeyMap[Number(match[1])] = match[2].toUpperCase();
       }
+      continue;
     }
 
-    if (questionText && optionA && optionB && optionC && optionD) {
-      questions.push({ questionText, optionA, optionB, optionC, optionD, correctAnswer, category: 'Text Import' });
+    const questionMatch = line.match(/^(?:Q\s*\d+\s*[:.]|Q\s*[:.]|Question\s*\d*\s*[:.]|\d+[.\)])\s*(.+)/i);
+    if (questionMatch) {
+      saveCurrent();
+      currentQuestion = { questionText: questionMatch[1], optionA: '', optionB: '', optionC: '', optionD: '', correctAnswer: 'A' };
+      continue;
+    }
+    if (!currentQuestion) continue;
+
+    const optionMatch = line.match(/^(\*)?([A-D])[.)]\s*(.+)/i);
+    if (optionMatch) {
+      const option = optionMatch[2].toUpperCase() as 'A' | 'B' | 'C' | 'D';
+      currentQuestion[`option${option}` as 'optionA' | 'optionB' | 'optionC' | 'optionD'] = optionMatch[3];
+      if (optionMatch[1] || line.toLowerCase().includes('(correct)')) currentQuestion.correctAnswer = option;
+      continue;
+    }
+
+    const answerMatch = line.match(/^Answer:\s*([A-D])/i);
+    if (answerMatch) {
+      currentQuestion.correctAnswer = answerMatch[1].toUpperCase() as ParsedQuestion['correctAnswer'];
     }
   }
 
-  return questions;
+  saveCurrent();
+  return questions.map((question, index) => {
+    const answer = answerKeyMap[index + 1];
+    return answer
+      ? { ...question, correctOption: answer, correctAnswer: answer as ParsedQuestion['correctAnswer'] }
+      : question;
+  });
+}
+
+function finalizeQuestion(question: Partial<ParsedQuestion>): ParsedQuestion {
+  const correctOption = question.correctAnswer || question.correctOption || 'A';
+  return {
+    questionText: question.questionText || '',
+    optionA: question.optionA || 'Option A',
+    optionB: question.optionB || 'Option B',
+    optionC: question.optionC || 'Option C',
+    optionD: question.optionD || 'Option D',
+    correctAnswer: correctOption as ParsedQuestion['correctAnswer'],
+    correctOption,
+    subject: 'General',
+    gradeClass: 'All',
+    difficulty: 'Medium',
+    marks: 1,
+  };
+}
+
+export async function extractDocumentText(fileName: string, content: Buffer): Promise<string> {
+  const extension = fileName.toLowerCase().split('.').pop();
+  if (extension === 'txt') return content.toString('utf8');
+  if (extension === 'pdf') return parsePdfBuffer(content);
+  if (extension === 'docx') return parseDocxBuffer(content);
+  throw new Error('Unsupported file type. Please upload a PDF, DOCX, or TXT file.');
 }
