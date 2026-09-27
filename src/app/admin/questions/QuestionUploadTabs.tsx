@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import { importQuestionsAction, clearAllQuestionsAction } from '@/actions/admin';
+import AddQuestionModal from '@/components/admin/AddQuestionModal';
+import DocumentQuestionImporter from '@/components/admin/DocumentQuestionImporter';
+import CsvExcelImporter from '@/components/admin/CsvExcelImporter';
 
 export default function QuestionUploadTabs() {
   const [activeTab, setActiveTab] = useState<'file' | 'text'>('file');
   const [textInput, setTextInput] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -58,13 +62,13 @@ export default function QuestionUploadTabs() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 p-6 rounded-xl space-y-6 shadow-sm">
-      <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-        <div className="flex gap-4">
+    <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex flex-col items-stretch gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
           <button
             type="button"
             onClick={() => setActiveTab('file')}
-            className={`px-4 py-2 font-bold rounded-lg text-sm transition-colors ${
+            className={`w-full rounded-lg px-4 py-3 text-sm font-bold transition-colors sm:w-auto sm:py-2 ${
               activeTab === 'file' ? 'bg-indigo-600 text-white' : 'text-slate-700 hover:bg-slate-100'
             }`}
           >
@@ -72,7 +76,7 @@ export default function QuestionUploadTabs() {
           </button>
           <button
             onClick={() => setActiveTab('text')}
-            className={`font-semibold pb-2 border-b-2 ${
+            className={`w-full border-b-2 pb-3 text-left font-semibold sm:w-auto sm:pb-2 ${
               activeTab === 'text' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'
             }`}
           >
@@ -82,13 +86,23 @@ export default function QuestionUploadTabs() {
 
         <button
           type="button"
+          onClick={() => setIsAddModalOpen(true)}
+          className="w-full rounded-lg bg-emerald-600 px-3 py-3 text-xs font-semibold text-white hover:bg-emerald-700 sm:w-auto sm:py-1.5"
+        >
+          Add Question
+        </button>
+        <button
+          type="button"
           onClick={handleClearAll}
           disabled={loading}
-          className="text-xs px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 font-semibold transition-colors"
+          className="w-full rounded border border-red-300 bg-red-100 px-3 py-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-200 sm:w-auto sm:py-1.5"
         >
           Clear All Questions
         </button>
       </div>
+
+      <DocumentQuestionImporter />
+      <CsvExcelImporter />
 
       {activeTab === 'file' ? (
         <div className="space-y-4">
@@ -99,7 +113,7 @@ export default function QuestionUploadTabs() {
               accept=".csv"
               onChange={handleFileUpload}
               disabled={loading}
-              className="block w-full text-sm text-slate-900 border border-slate-300 rounded-lg p-2 bg-slate-50 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer"
+              className="block w-full rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-900 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700"
             />
           </div>
           
@@ -114,7 +128,7 @@ export default function QuestionUploadTabs() {
               onChange={(e) => setTextInput(e.target.value)}
               placeholder={`Q: What is 2+2?\nA) 1\nB) 2\nC) 4\nD) 5\nANS: C`}
               required
-              className="w-full border border-slate-300 p-2 rounded font-mono text-sm text-slate-900"
+              className="w-full rounded border border-slate-300 p-3 font-mono text-sm text-slate-900"
             />
           </div>
           <button
@@ -128,6 +142,7 @@ export default function QuestionUploadTabs() {
       )}
 
       {status && <p className="text-sm font-bold text-indigo-700 pt-2">{status}</p>}
+      <AddQuestionModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 }

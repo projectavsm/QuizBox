@@ -34,6 +34,10 @@ model Question {
   optionC       String
   optionD       String
   correctOption String   // "A", "B", "C", or "D"
+  subject       String   @default("General")
+  gradeClass    String   @default("All")
+  difficulty    String   @default("Medium")
+  marks         Float    @default(1.0)
   createdAt     DateTime @default(now())
 }
 
