@@ -29,8 +29,8 @@ export default function QuestionPalette({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-      <h3 className="text-base font-semibold text-gray-800 mb-4">Question Palette</h3>
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="mb-4 text-base font-semibold text-gray-800">Question Palette</h3>
 
       {/* Color Legend */}
       <div className="grid grid-cols-2 gap-2 text-xs mb-5 pb-4 border-b border-gray-100">
@@ -53,14 +53,14 @@ export default function QuestionPalette({
       </div>
 
       {/* Grid Palette */}
-      <div className="grid grid-cols-5 gap-2 max-h-[320px] overflow-y-auto p-1">
+      <div className="grid max-h-[240px] grid-cols-5 gap-2 overflow-y-auto p-1 sm:max-h-[320px]">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
           const qId = questionIds[idx];
           return (
             <button
               key={idx}
               onClick={() => onSelectQuestion(idx)}
-              className={`h-9 w-9 rounded-lg font-medium text-sm flex items-center justify-center transition-all ${getStatusColor(
+              className={`flex h-10 w-full min-w-0 items-center justify-center rounded-lg text-sm font-medium transition-all ${getStatusColor(
                 idx,
                 qId
               )}`}

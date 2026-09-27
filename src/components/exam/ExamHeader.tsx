@@ -42,19 +42,19 @@ export default function ExamHeader({
   const isWarning = timeLeft < 300; // Less than 5 minutes
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm px-4 py-3">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">{examTitle}</h1>
+    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="break-words text-lg font-bold text-gray-800 sm:text-xl">{examTitle}</h1>
           {studentInfo?.name && (
-            <p className="text-sm text-gray-500">
+            <p className="break-words text-sm text-gray-500">
               Student: <span className="font-medium text-gray-700">{studentInfo.name}</span>
               {studentInfo.rollNumber && ` (Roll: ${studentInfo.rollNumber})`}
             </p>
           )}
         </div>
 
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-lg font-bold ${
+        <div className={`flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-3 font-mono text-base font-bold sm:w-auto sm:px-4 sm:py-2 sm:text-lg ${
           isWarning 
             ? 'bg-red-50 border-red-300 text-red-600 animate-pulse' 
             : 'bg-blue-50 border-blue-200 text-blue-700'

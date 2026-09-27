@@ -32,14 +32,14 @@ export default function QuestionView({
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-        <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-3">
+        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full sm:text-sm">
           Question {currentIndex + 1} of {totalQuestions}
         </span>
       </div>
 
-      <h2 className="text-lg font-medium text-gray-900 mb-6 leading-relaxed">
+      <h2 className="mb-5 break-words text-base font-medium leading-relaxed text-gray-900 sm:mb-6 sm:text-lg">
         {question.questionText}
       </h2>
 
@@ -50,7 +50,7 @@ export default function QuestionView({
             <label
               key={opt.key}
               onClick={() => onSelectOption(opt.key)}
-              className={`flex items-start p-4 rounded-lg border cursor-pointer transition-all ${
+              className={`flex w-full items-start rounded-xl border p-4 text-left transition active:scale-[0.98] ${
                 isSelected
                   ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'

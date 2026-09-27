@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import StudentExamClient from '@/components/exam/StudentExamClient';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getShuffledExamQuestions } from '@/actions/exam';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,10 +28,7 @@ export default async function TestPage() {
   // Fetch settings for timer duration and exam title
   const [settings, questions] = await Promise.all([
     prisma.settings.findFirst(),
-    prisma.question.findMany({
-      select: { id: true, questionText: true, optionA: true, optionB: true, optionC: true, optionD: true },
-      orderBy: { id: 'asc' },
-    }),
+    getShuffledExamQuestions(session.studentId),
   ]);
 
   return (
