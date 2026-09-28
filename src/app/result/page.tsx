@@ -1,3 +1,4 @@
+import { finishStudentSessionAction } from '@/actions/student';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -15,45 +16,34 @@ export default async function ResultPage() {
     redirect('/');
   }
 
-  const submission = await prisma.submission.findUnique({ where: { studentId } });
+  const submission = await prisma.submission.findUnique({
+    where: { studentId },
+    include: { student: true },
+  });
   if (!submission) redirect('/test');
 
-  let answersMap: Record<string, string> = {};
-  try {
-    const parsed = JSON.parse(submission.answersJson) as unknown;
-    if (parsed && typeof parsed === 'object') answersMap = parsed as Record<string, string>;
-  } catch {
-    answersMap = {};
-  }
-
-  const questions = await prisma.question.findMany({ orderBy: { id: 'asc' } });
-  const breakdown = questions.map((question) => {
-    const studentChoice = answersMap[question.id] || answersMap[String(question.id)];
-    const isSkipped = !studentChoice;
-    const isCorrect = !isSkipped && studentChoice.toUpperCase() === question.correctOption.toUpperCase();
-    return { question, studentChoice, isSkipped, isCorrect };
-  });
-
   return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-white sm:p-8">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <header>
+    <main className="flex min-h-screen items-center justify-center overflow-x-hidden bg-slate-950 p-4 text-white sm:p-8">
+      <section className="w-full max-w-xl space-y-8 rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl sm:p-10">
+        <header className="space-y-3 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">QuizBox Complete</p>
-          <h1 className="mt-2 text-3xl font-extrabold">Test Submitted!</h1>
-          <p className="mt-2 text-slate-300">Score: {submission.score} / {submission.total}</p>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">🎉 Exam Submitted Successfully!</h1>
+          <p className="text-slate-300">Your responses have been recorded.</p>
         </header>
-        <section className="space-y-3">
-          {breakdown.map(({ question, studentChoice, isSkipped, isCorrect }, index) => (
-            <article key={question.id} className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-              <h2 className="font-semibold">{index + 1}. {question.questionText}</h2>
-              <p className="mt-2 text-sm text-slate-300">Your answer: {studentChoice || 'No answer'}</p>
-              <p className={`mt-2 text-sm font-bold ${isSkipped ? 'text-amber-300' : isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
-                {isSkipped ? 'Skipped / No marks' : isCorrect ? 'Correct (+1)' : 'Incorrect'}
-              </p>
-            </article>
-          ))}
-        </section>
-      </div>
+
+        <dl className="divide-y divide-slate-700 rounded-xl border border-slate-700 bg-slate-950/50">
+          <div className="flex items-center justify-between gap-4 p-4"><dt className="text-sm text-slate-400">Student Name</dt><dd className="text-right font-semibold">{submission.student.name}</dd></div>
+          <div className="flex items-center justify-between gap-4 p-4"><dt className="text-sm text-slate-400">Roll Number</dt><dd className="text-right font-semibold">{submission.student.rollNumber}</dd></div>
+          <div className="flex items-center justify-between gap-4 p-4"><dt className="text-sm text-slate-400">Grade/Class</dt><dd className="text-right font-semibold">{submission.student.gradeClass}</dd></div>
+          <div className="flex items-center justify-between gap-4 p-4"><dt className="text-sm text-slate-400">Submission Time</dt><dd className="text-right font-semibold">{submission.submittedAt.toLocaleString()}</dd></div>
+        </dl>
+
+        <form action={finishStudentSessionAction}>
+          <button type="submit" className="w-full rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500">
+            Finish &amp; Return Home
+          </button>
+        </form>
+      </section>
     </main>
   );
 }
