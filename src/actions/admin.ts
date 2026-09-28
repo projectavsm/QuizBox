@@ -83,32 +83,37 @@ export async function bulkInsertCsvQuestionsAction(questionsArray: CsvQuestion[]
 
 export type ExamSettingsInput = {
   durationMinutes: number;
-  examTitle: string;
-  isExamActive: boolean;
+  examTitle?: string;
+  isExamActive?: boolean;
 };
 
 export async function updateExamSettingsAction(data: ExamSettingsInput | FormData) {
   const durationMinutes = data instanceof FormData
-    ? parseInt(data.get('durationMinutes') as string, 10) || 30
+    ? Number.parseInt(String(data.get('durationMinutes') || ''), 10)
     : data.durationMinutes;
   const examTitle = data instanceof FormData
-    ? (data.get('examTitle') as string) || 'QuizBox Assessment'
-    : data.examTitle.trim() || 'QuizBox Assessment';
-  const isExamActive = data instanceof FormData ? data.get('isExamActive') === 'on' : data.isExamActive;
+    ? String(data.get('examTitle') || 'QuizBox Examination').trim()
+    : data.examTitle?.trim() || 'QuizBox Examination';
+  const isExamActive = data instanceof FormData ? data.get('isExamActive') === 'on' : data.isExamActive ?? true;
 
   if (!Number.isFinite(durationMinutes) || durationMinutes < 1) {
     return { success: false, message: 'Duration must be at least one minute.' };
   }
 
-  const existing = await prisma.settings.findFirst();
-  if (existing) {
-    await prisma.settings.update({ where: { id: existing.id }, data: { durationMinutes, examTitle, isExamActive } });
-  } else {
-    await prisma.settings.create({ data: { durationMinutes, examTitle, isExamActive } });
-  }
+  await prisma.settings.upsert({
+    where: { id: 1 },
+    update: { durationMinutes, examTitle, isExamActive },
+    create: { id: 1, durationMinutes, examTitle, isExamActive },
+  });
   revalidatePath('/');
   revalidatePath('/admin');
+  revalidatePath('/test');
   return { success: true };
+}
+
+export async function getExamSettingsAction() {
+  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+  return settings ?? { id: 1, examTitle: 'QuizBox Examination', durationMinutes: 30, isExamActive: true };
 }
 
 export async function getLiveStatsAction() {
