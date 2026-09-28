@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+@media print {
+	body { background: white; }
+	.print\:hidden { display: none !important; }
+	.print\:p-0 { padding: 0 !important; }
+}
