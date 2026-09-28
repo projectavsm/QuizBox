@@ -3,6 +3,8 @@
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { handleServerError } from '@/lib/errorUtils';
+import { logger } from '@/lib/logger';
 
 const optionKeys = ['A', 'B', 'C', 'D'] as const;
 type OptionKey = (typeof optionKeys)[number];
@@ -45,16 +47,21 @@ async function getShuffledQuestionRecords(studentId: number): Promise<ExamQuesti
 }
 
 export async function getShuffledExamQuestions(studentId: number) {
-  const records = await getShuffledQuestionRecords(studentId);
-  return records.map((question) => ({
-    id: question.id,
-    questionText: question.questionText,
-    imageUrl: question.imageUrl,
-    optionA: question.optionA,
-    optionB: question.optionB,
-    optionC: question.optionC,
-    optionD: question.optionD,
-  }));
+  try {
+    const records = await getShuffledQuestionRecords(studentId);
+    return records.map((question) => ({
+      id: question.id,
+      questionText: question.questionText,
+      imageUrl: question.imageUrl,
+      optionA: question.optionA,
+      optionB: question.optionB,
+      optionC: question.optionC,
+      optionD: question.optionD,
+    }));
+  } catch (error) {
+    handleServerError(error, 'getShuffledExamQuestions');
+    return [];
+  }
 }
 
 export async function submitExamAction({
@@ -137,6 +144,8 @@ export async function submitExamAction({
     revalidatePath('/admin/export');
     revalidatePath('/result');
 
+    logger.action('submitExamAction', `Student #${student.id} (${score}/${questions.length})`);
+
     return {
       success: true,
       submissionId: submission.id,
@@ -144,7 +153,6 @@ export async function submitExamAction({
       total: questions.length,
     };
   } catch (error: unknown) {
-    console.error('Error in submitExamAction:', error);
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to submit exam.' };
+    return { success: false, message: handleServerError(error, 'submitExamAction') };
   }
 }

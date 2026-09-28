@@ -3,11 +3,22 @@
 import { prisma } from '@/lib/prisma';
 import { StudentRegistrationInput } from '@/types';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { handleServerError } from '@/lib/errorUtils';
+import { logger } from '@/lib/logger';
 
 export async function checkStudentSessionAction() {
   const cookieStore = await cookies();
   const isSubmitted = cookieStore.get('quizbox_exam_submitted')?.value === 'true';
   return { isSubmitted };
+}
+
+export async function finishStudentSessionAction() {
+  const cookieStore = await cookies();
+  cookieStore.delete('student_session');
+  cookieStore.delete('quizbox_student_id');
+  cookieStore.delete('quizbox_exam_submitted');
+  redirect('/');
 }
 
 export async function registerStudent(input: StudentRegistrationInput) {
@@ -72,29 +83,34 @@ export async function registerStudent(input: StudentRegistrationInput) {
       path: '/',
     });
 
+    logger.action('registerStudent', `Student #${student.id} registered`);
     return { success: true, studentId: student.id };
   } catch (error) {
-    console.error('Registration Error:', error);
-    return { success: false, error: 'An error occurred during registration.' };
+    return { success: false, error: handleServerError(error, 'registerStudent') };
   }
 }
 
 export async function getCurrentStudentSession() {
-  const cookieStore = await cookies();
-  const studentId = cookieStore.get('quizbox_student_id')?.value;
+  try {
+    const cookieStore = await cookies();
+    const studentId = cookieStore.get('quizbox_student_id')?.value;
 
-  if (!studentId) return null;
+    if (!studentId) return null;
 
-  return await prisma.student.findUnique({
-    where: { id: parseInt(studentId, 10) },
-    select: {
-      id: true,
-      name: true,
-      gradeClass: true,
-      section: true,
-      rollNumber: true,
-    },
-  });
+    return await prisma.student.findUnique({
+      where: { id: parseInt(studentId, 10) },
+      select: {
+        id: true,
+        name: true,
+        gradeClass: true,
+        section: true,
+        rollNumber: true,
+      },
+    });
+  } catch (error) {
+    handleServerError(error, 'getCurrentStudentSession');
+    return null;
+  }
 }
 
 export async function registerStudentAction(data: StudentRegistrationInput) {
@@ -123,9 +139,9 @@ export async function registerStudentAction(data: StudentRegistrationInput) {
       path: '/',
     });
 
+    logger.action('registerStudentAction', `Student #${student.id} registered`);
     return { success: true, studentId: String(student.id) };
   } catch (error: unknown) {
-    console.error('Registration error:', error);
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to register student' };
+    return { success: false, message: handleServerError(error, 'registerStudentAction') };
   }
 }

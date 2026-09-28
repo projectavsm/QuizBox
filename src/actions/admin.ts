@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { extractDocumentText, parseCSV, parseDocumentQuestionText, parseFormattedText, ParsedQuestion } from '@/lib/parser';
 import type { CsvQuestion } from '@/lib/csvParser';
 import { revalidatePath } from 'next/cache';
+import { handleServerError } from '@/lib/errorUtils';
+import { logger } from '@/lib/logger';
 
 export type QuestionInput = {
   questionText: string;
@@ -36,21 +38,36 @@ function questionData(data: QuestionInput) {
 }
 
 export async function addSingleQuestionAction(data: QuestionInput) {
-  const question = await prisma.question.create({ data: questionData(data) });
-  revalidatePath('/admin/questions');
-  return { success: true, questionId: question.id };
+  try {
+    const question = await prisma.question.create({ data: questionData(data) });
+    revalidatePath('/admin/questions');
+    logger.action('addSingleQuestionAction', `Question #${question.id} created`);
+    return { success: true, questionId: question.id };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'addSingleQuestionAction') };
+  }
 }
 
 export async function updateQuestionAction(id: number, data: QuestionInput) {
-  await prisma.question.update({ where: { id }, data: questionData(data) });
-  revalidatePath('/admin/questions');
-  return { success: true };
+  try {
+    await prisma.question.update({ where: { id }, data: questionData(data) });
+    revalidatePath('/admin/questions');
+    logger.action('updateQuestionAction', `Question #${id} updated`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'updateQuestionAction') };
+  }
 }
 
 export async function deleteQuestionAction(id: number) {
-  await prisma.question.delete({ where: { id } });
-  revalidatePath('/admin/questions');
-  return { success: true };
+  try {
+    await prisma.question.delete({ where: { id } });
+    revalidatePath('/admin/questions');
+    logger.action('deleteQuestionAction', `Question #${id} deleted`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'deleteQuestionAction') };
+  }
 }
 
 export async function bulkInsertCsvQuestionsAction(questionsArray: CsvQuestion[]) {
@@ -63,22 +80,27 @@ export async function bulkInsertCsvQuestionsAction(questionsArray: CsvQuestion[]
   );
   if (invalidIndex >= 0) return { success: false, count: 0, message: `Question ${invalidIndex + 1} has invalid or missing values.` };
 
-  await prisma.$transaction((transaction) => transaction.question.createMany({
-    data: questionsArray.map((question) => ({
-      questionText: question.questionText.trim(),
-      optionA: question.optionA.trim(),
-      optionB: question.optionB.trim(),
-      optionC: question.optionC.trim(),
-      optionD: question.optionD.trim(),
-      correctOption: question.correctOption,
-      subject: question.subject.trim() || 'General',
-      gradeClass: question.gradeClass.trim() || 'All',
-      difficulty: question.difficulty,
-      marks: question.marks,
-    })),
-  }));
-  revalidatePath('/admin/questions');
-  return { success: true, count: questionsArray.length };
+  try {
+    await prisma.$transaction((transaction) => transaction.question.createMany({
+      data: questionsArray.map((question) => ({
+        questionText: question.questionText.trim(),
+        optionA: question.optionA.trim(),
+        optionB: question.optionB.trim(),
+        optionC: question.optionC.trim(),
+        optionD: question.optionD.trim(),
+        correctOption: question.correctOption,
+        subject: question.subject.trim() || 'General',
+        gradeClass: question.gradeClass.trim() || 'All',
+        difficulty: question.difficulty,
+        marks: question.marks,
+      })),
+    }));
+    revalidatePath('/admin/questions');
+    logger.action('bulkInsertCsvQuestionsAction', `${questionsArray.length} questions imported`);
+    return { success: true, count: questionsArray.length };
+  } catch (error) {
+    return { success: false, count: 0, message: handleServerError(error, 'bulkInsertCsvQuestionsAction') };
+  }
 }
 
 export type ExamSettingsInput = {
@@ -100,20 +122,30 @@ export async function updateExamSettingsAction(data: ExamSettingsInput | FormDat
     return { success: false, message: 'Duration must be at least one minute.' };
   }
 
-  await prisma.settings.upsert({
-    where: { id: 1 },
-    update: { durationMinutes, examTitle, isExamActive },
-    create: { id: 1, durationMinutes, examTitle, isExamActive },
-  });
-  revalidatePath('/');
-  revalidatePath('/admin');
-  revalidatePath('/test');
-  return { success: true };
+  try {
+    await prisma.settings.upsert({
+      where: { id: 1 },
+      update: { durationMinutes, examTitle, isExamActive },
+      create: { id: 1, durationMinutes, examTitle, isExamActive },
+    });
+    revalidatePath('/');
+    revalidatePath('/admin');
+    revalidatePath('/test');
+    logger.action('updateExamSettingsAction', `Exam settings updated (${durationMinutes} minutes)`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'updateExamSettingsAction') };
+  }
 }
 
 export async function getExamSettingsAction() {
-  const settings = await prisma.settings.findUnique({ where: { id: 1 } });
-  return settings ?? { id: 1, examTitle: 'QuizBox Examination', durationMinutes: 30, isExamActive: true };
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    return settings ?? { id: 1, examTitle: 'QuizBox Examination', durationMinutes: 30, isExamActive: true };
+  } catch (error) {
+    handleServerError(error, 'getExamSettingsAction');
+    return { id: 1, examTitle: 'QuizBox Examination', durationMinutes: 30, isExamActive: true };
+  }
 }
 
 export async function getLiveStatsAction() {
@@ -144,24 +176,29 @@ export async function getLiveStatsAction() {
       success: true,
       stats: { totalRegistered, totalSubmitted, averageScore, highestScore, recentSubmissions },
     };
-  } catch {
-    return { success: false, message: 'Failed to fetch live stats' };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'getLiveStatsAction') };
   }
 }
 
 export async function bulkAddQuestionsAction(questions: QuestionInput[]) {
   if (!questions.length) return { success: false, count: 0, message: 'No questions to save.' };
 
-  await prisma.question.createMany({
-    data: questions.map((question) => ({
-      questionText: question.questionText.trim(), optionA: question.optionA.trim(), optionB: question.optionB.trim(),
-      optionC: question.optionC.trim(), optionD: question.optionD.trim(), correctOption: question.correctOption,
-      subject: question.subject?.trim() || 'General', gradeClass: question.gradeClass?.trim() || 'All',
-      difficulty: question.difficulty, marks: Number.isFinite(question.marks) && question.marks >= 0 ? question.marks : 1,
-    })),
-  });
-  revalidatePath('/admin/questions');
-  return { success: true, count: questions.length };
+  try {
+    await prisma.question.createMany({
+      data: questions.map((question) => ({
+        questionText: question.questionText.trim(), optionA: question.optionA.trim(), optionB: question.optionB.trim(),
+        optionC: question.optionC.trim(), optionD: question.optionD.trim(), correctOption: question.correctOption,
+        subject: question.subject?.trim() || 'General', gradeClass: question.gradeClass?.trim() || 'All',
+        difficulty: question.difficulty, marks: Number.isFinite(question.marks) && question.marks >= 0 ? question.marks : 1,
+      })),
+    });
+    revalidatePath('/admin/questions');
+    logger.action('bulkAddQuestionsAction', `${questions.length} questions saved`);
+    return { success: true, count: questions.length };
+  } catch (error) {
+    return { success: false, count: 0, message: handleServerError(error, 'bulkAddQuestionsAction') };
+  }
 }
 
 export async function parseDocumentAction(formData: FormData) {
@@ -173,55 +210,61 @@ export async function parseDocumentAction(formData: FormData) {
   try {
     const content = await extractDocumentText(file.name, Buffer.from(await file.arrayBuffer()));
     const questions: ParsedQuestion[] = parseDocumentQuestionText(content);
+    if (questions.length) logger.action('parseDocumentAction', `${questions.length} questions parsed`);
     return questions.length
       ? { success: true, questions }
       : { success: false, questions: [], message: 'No complete questions were found in this document.' };
   } catch (error) {
-    return { success: false, questions: [], message: error instanceof Error ? error.message : 'Unable to parse the document.' };
+    return { success: false, questions: [], message: handleServerError(error, 'parseDocumentAction') };
   }
 }
 
 export async function getStudentSubmissionDetail(submissionId: number) {
-  const submission = await prisma.submission.findUnique({
-    where: { id: submissionId },
-    include: { student: true },
-  });
-
-  if (!submission) return null;
-
-  let answers: Record<string, string> = {};
   try {
-    const parsed = JSON.parse(submission.answersJson) as unknown;
-    if (parsed && typeof parsed === 'object') answers = parsed as Record<string, string>;
-  } catch {
-    answers = {};
-  }
+    const submission = await prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: { student: true },
+    });
 
-  const questions = await prisma.question.findMany({ orderBy: { id: 'asc' } });
-  const breakdown = questions.map((question) => {
-    const studentChoice = answers[String(question.id)]?.toUpperCase() || null;
+    if (!submission) return null;
+
+    let answers: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(submission.answersJson) as unknown;
+      if (parsed && typeof parsed === 'object') answers = parsed as Record<string, string>;
+    } catch {
+      answers = {};
+    }
+
+    const questions = await prisma.question.findMany({ orderBy: { id: 'asc' } });
+    const breakdown = questions.map((question) => {
+      const studentChoice = answers[String(question.id)]?.toUpperCase() || null;
+      return {
+        questionId: question.id,
+        questionText: question.questionText,
+        options: { A: question.optionA, B: question.optionB, C: question.optionC, D: question.optionD },
+        correctOption: question.correctOption,
+        studentChoice,
+        isCorrect: studentChoice === question.correctOption.toUpperCase(),
+        marks: question.marks,
+      };
+    });
+
     return {
-      questionId: question.id,
-      questionText: question.questionText,
-      options: { A: question.optionA, B: question.optionB, C: question.optionC, D: question.optionD },
-      correctOption: question.correctOption,
-      studentChoice,
-      isCorrect: studentChoice === question.correctOption.toUpperCase(),
-      marks: question.marks,
+      student: {
+        name: submission.student.name,
+        gradeClass: submission.student.gradeClass,
+        section: submission.student.section,
+        rollNumber: submission.student.rollNumber,
+      },
+      score: submission.score,
+      total: submission.total,
+      breakdown,
     };
-  });
-
-  return {
-    student: {
-      name: submission.student.name,
-      gradeClass: submission.student.gradeClass,
-      section: submission.student.section,
-      rollNumber: submission.student.rollNumber,
-    },
-    score: submission.score,
-    total: submission.total,
-    breakdown,
-  };
+  } catch (error) {
+    handleServerError(error, 'getStudentSubmissionDetail');
+    return null;
+  }
 }
 
 export async function importQuestionsAction(formData: FormData) {
@@ -241,27 +284,37 @@ export async function importQuestionsAction(formData: FormData) {
     return { success: false, count: 0, message: 'No valid questions found.' };
   }
 
-  await prisma.question.createMany({
-    data: parsed.map((q) => ({
-      questionText: q.questionText,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
-      correctOption: q.correctAnswer || q.correctOption, // Fixed field name mapping
-      subject: 'General',
-      gradeClass: 'All',
-      difficulty: 'Medium',
-      marks: 1,
-    })),
-  });
+  try {
+    await prisma.question.createMany({
+      data: parsed.map((q) => ({
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctOption: q.correctAnswer || q.correctOption,
+        subject: 'General',
+        gradeClass: 'All',
+        difficulty: 'Medium',
+        marks: 1,
+      })),
+    });
 
-  revalidatePath('/admin/questions');
-  return { success: true, count: parsed.length };
+    revalidatePath('/admin/questions');
+    logger.action('importQuestionsAction', `${parsed.length} questions imported`);
+    return { success: true, count: parsed.length };
+  } catch (error) {
+    return { success: false, count: 0, message: handleServerError(error, 'importQuestionsAction') };
+  }
 }
 
 export async function clearAllQuestionsAction() {
-  await prisma.question.deleteMany();
-  revalidatePath('/admin/questions');
-  return { success: true };
+  try {
+    const result = await prisma.question.deleteMany();
+    revalidatePath('/admin/questions');
+    logger.action('clearAllQuestionsAction', `${result.count} questions deleted`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: handleServerError(error, 'clearAllQuestionsAction') };
+  }
 }
