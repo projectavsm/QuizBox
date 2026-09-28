@@ -3,6 +3,7 @@
 interface Question {
   id: number;
   questionText: string;
+  imageUrl?: string | null;
   optionA: string;
   optionB: string;
   optionC: string;
@@ -42,6 +43,16 @@ export default function QuestionView({
       <h2 className="mb-5 break-words text-base font-medium leading-relaxed text-gray-900 sm:mb-6 sm:text-lg">
         {question.questionText}
       </h2>
+
+      {question.imageUrl && (
+        <div className="my-4 flex justify-center">
+          <img
+            src={question.imageUrl}
+            alt="Question Diagram"
+            className="max-h-64 rounded-lg border object-contain"
+          />
+        </div>
+      )}
 
       <div className="space-y-3">
         {options.map((opt) => {
