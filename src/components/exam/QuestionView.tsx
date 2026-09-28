@@ -12,6 +12,7 @@ interface Question {
 
 interface DisplayOption {
   key: 'A' | 'B' | 'C' | 'D';
+  sourceKey: 'A' | 'B' | 'C' | 'D';
   text: string;
 }
 
@@ -33,10 +34,10 @@ export default function QuestionView({
   displayOptions,
 }: QuestionViewProps) {
   const options = displayOptions || [
-    { key: 'A', text: question.optionA },
-    { key: 'B', text: question.optionB },
-    { key: 'C', text: question.optionC },
-    { key: 'D', text: question.optionD },
+    { key: 'A', sourceKey: 'A', text: question.optionA },
+    { key: 'B', sourceKey: 'B', text: question.optionB },
+    { key: 'C', sourceKey: 'C', text: question.optionC },
+    { key: 'D', sourceKey: 'D', text: question.optionD },
   ];
 
   return (
@@ -63,11 +64,11 @@ export default function QuestionView({
 
       <div className="space-y-3">
         {options.map((opt) => {
-          const isSelected = selectedOption === opt.key;
+          const isSelected = selectedOption === opt.sourceKey;
           return (
             <label
               key={opt.key}
-              onClick={() => onSelectOption(opt.key)}
+              onClick={() => onSelectOption(opt.sourceKey)}
               className={`flex w-full items-start rounded-xl border p-4 text-left transition active:scale-[0.98] ${
                 isSelected
                   ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20'
@@ -79,7 +80,7 @@ export default function QuestionView({
                 name={`question-${question.id}`}
                 value={opt.key}
                 checked={isSelected}
-                onChange={() => onSelectOption(opt.key)}
+                onChange={() => onSelectOption(opt.sourceKey)}
                 className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
               <span className="ml-3 text-sm font-medium text-gray-800">

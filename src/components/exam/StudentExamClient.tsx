@@ -9,7 +9,8 @@ import QuestionView from './QuestionView';
 
 interface Question { id: number; questionText: string; imageUrl?: string | null; optionA: string; optionB: string; optionC: string; optionD: string; }
 interface StudentExamClientProps { initialQuestions: Question[]; durationMinutes: number; examTitle: string; studentId: number; }
-interface DisplayOption { key: 'A' | 'B' | 'C' | 'D'; text: string; }
+interface DisplayOption { key: 'A' | 'B' | 'C' | 'D'; sourceKey: 'A' | 'B' | 'C' | 'D'; text: string; }
+const optionLabels = ['A', 'B', 'C', 'D'] as const;
 
 export default function StudentExamClient({ initialQuestions, durationMinutes, examTitle, studentId }: StudentExamClientProps) {
   const endTimeStorageKey = `quizbox_exam_end_time_${studentId}`;
@@ -31,12 +32,17 @@ export default function StudentExamClient({ initialQuestions, durationMinutes, e
     const shuffledQuestions = shuffleArray(initialQuestions);
     const optionsByQuestion: Record<number, DisplayOption[]> = {};
     shuffledQuestions.forEach((question) => {
-      optionsByQuestion[question.id] = shuffleArray([
-        { key: 'A' as const, text: question.optionA },
-        { key: 'B' as const, text: question.optionB },
-        { key: 'C' as const, text: question.optionC },
-        { key: 'D' as const, text: question.optionD },
+      const shuffledOptions = shuffleArray([
+        { sourceKey: 'A' as const, text: question.optionA },
+        { sourceKey: 'B' as const, text: question.optionB },
+        { sourceKey: 'C' as const, text: question.optionC },
+        { sourceKey: 'D' as const, text: question.optionD },
       ]);
+      optionsByQuestion[question.id] = shuffledOptions.map((option, index) => ({
+        key: optionLabels[index],
+        sourceKey: option.sourceKey,
+        text: option.text,
+      }));
     });
     setQuestions(shuffledQuestions);
     setDisplayOptions(optionsByQuestion);
