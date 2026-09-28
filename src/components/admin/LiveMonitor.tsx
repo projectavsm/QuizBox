@@ -26,17 +26,27 @@ export default function LiveMonitor() {
     let isMounted = true;
 
     const fetchStats = async () => {
+      if (document.visibilityState === 'hidden') return;
       const result = await getLiveStatsAction();
       if (isMounted && result.success && result.stats) setStats(result.stats);
     };
 
-    void fetchStats();
-    if (!isLive) return () => { isMounted = false; };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void fetchStats();
+    };
 
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (!isLive) return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+
+    if (document.visibilityState === 'visible') void fetchStats();
     const interval = window.setInterval(() => void fetchStats(), 3000);
     return () => {
       isMounted = false;
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isLive]);
 
