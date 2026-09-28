@@ -11,6 +11,7 @@ import { submitExamAction } from '@/actions/exam';
 interface Question {
   id: number;
   questionText: string;
+  imageUrl?: string | null;
   optionA: string;
   optionB: string;
   optionC: string;

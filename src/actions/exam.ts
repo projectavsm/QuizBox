@@ -30,6 +30,7 @@ function shuffle<T>(values: readonly T[], seed: number): T[] {
 type ExamQuestionRecord = {
   id: number;
   questionText: string;
+  imageUrl: string | null;
   optionA: string;
   optionB: string;
   optionC: string;
@@ -56,6 +57,7 @@ export async function getShuffledExamQuestions(studentId: number) {
   return records.map((question) => ({
     id: question.id,
     questionText: question.questionText,
+    imageUrl: question.imageUrl,
     optionA: optionText(question, question.optionOrder[0]),
     optionB: optionText(question, question.optionOrder[1]),
     optionC: optionText(question, question.optionOrder[2]),
