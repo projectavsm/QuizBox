@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 export type QuestionInput = {
   questionText: string;
+  imageUrl?: string | null;
   optionA: string;
   optionB: string;
   optionC: string;
@@ -21,6 +22,7 @@ export type QuestionInput = {
 function questionData(data: QuestionInput) {
   return {
     questionText: data.questionText.trim(),
+    imageUrl: data.imageUrl?.trim() || null,
     optionA: data.optionA.trim(),
     optionB: data.optionB.trim(),
     optionC: data.optionC.trim(),
@@ -107,6 +109,39 @@ export async function updateExamSettingsAction(data: ExamSettingsInput | FormDat
   revalidatePath('/');
   revalidatePath('/admin');
   return { success: true };
+}
+
+export async function getLiveStatsAction() {
+  try {
+    const totalRegistered = await prisma.student.count();
+    const submissions = await prisma.submission.findMany({
+      include: { student: true },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const totalSubmitted = submissions.length;
+    const scores = submissions.map((submission) => submission.score);
+    const averageScore = totalSubmitted > 0
+      ? scores.reduce((sum, score) => sum + score, 0) / totalSubmitted
+      : 0;
+    const highestScore = totalSubmitted > 0 ? Math.max(...scores) : 0;
+
+    const recentSubmissions = submissions.slice(0, 10).map((submission) => ({
+      id: submission.id,
+      name: submission.student.name,
+      rollNumber: submission.student.rollNumber,
+      score: submission.score,
+      total: submission.total,
+      submittedAt: submission.submittedAt.toLocaleTimeString(),
+    }));
+
+    return {
+      success: true,
+      stats: { totalRegistered, totalSubmitted, averageScore, highestScore, recentSubmissions },
+    };
+  } catch {
+    return { success: false, message: 'Failed to fetch live stats' };
+  }
 }
 
 export async function bulkAddQuestionsAction(questions: QuestionInput[]) {

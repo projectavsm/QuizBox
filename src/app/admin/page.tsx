@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import LiveMonitor from '@/components/admin/LiveMonitor';
 import SubmissionTable, { SubmissionRow } from './SubmissionTable';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-4 py-6 text-slate-900 sm:space-y-8 sm:px-6 lg:px-8">
       <h1 className="text-xl font-bold text-white sm:text-2xl">QuizBox Admin Dashboard</h1>
+      <LiveMonitor />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-slate-500">Total Questions</p>

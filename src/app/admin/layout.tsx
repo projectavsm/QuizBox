@@ -20,6 +20,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <a href="/admin/export" target="_blank" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-indigo-950 text-indigo-400 hover:text-indigo-300">
               Export Results (.CSV)
             </a>
+            <Link href="/admin/export-pdf" className="block px-4 py-2.5 rounded-lg font-medium hover:bg-indigo-950 text-indigo-400 hover:text-indigo-300">
+              Printable Summary (PDF)
+            </Link>
           </nav>
         </div>
 

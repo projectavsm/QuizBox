@@ -22,6 +22,8 @@ const initialForm: QuestionInput = {
 export default function AddQuestionModal({ isOpen, onClose }: AddQuestionModalProps) {
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -30,15 +32,38 @@ export default function AddQuestionModal({ isOpen, onClose }: AddQuestionModalPr
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function closeModal() {
+    if (uploading) return;
+    setForm(initialForm);
+    setImageFile(null);
+    setError(null);
+    onClose();
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
+    setUploading(true);
     setError(null);
 
     try {
-      const result = await addSingleQuestionAction(form);
+      let imageUrl: string | null = null;
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        const response = await fetch('/api/admin/upload-image', { method: 'POST', body: formData });
+        const data = await response.json() as { success?: boolean; imageUrl?: string; message?: string; error?: string };
+        if (!response.ok || !data.success || !data.imageUrl) {
+          throw new Error(data.message || data.error || 'Failed to upload image.');
+        }
+        imageUrl = data.imageUrl;
+      }
+
+      const result = await addSingleQuestionAction({ ...form, imageUrl });
       if (result.success) {
         setForm(initialForm);
+        setImageFile(null);
         onClose();
       } else {
         setError('Unable to add the question.');
@@ -47,6 +72,7 @@ export default function AddQuestionModal({ isOpen, onClose }: AddQuestionModalPr
       setError('Unable to add the question. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setUploading(false);
     }
   }
 
@@ -63,6 +89,17 @@ export default function AddQuestionModal({ isOpen, onClose }: AddQuestionModalPr
         <label className="block text-sm font-semibold text-slate-700">Question
           <textarea required rows={3} value={form.questionText} onChange={(event) => updateField('questionText', event.target.value)} className={`${inputClass} mt-1`} />
         </label>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Question Diagram / Image (Optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={(event) => setImageFile(event.target.files?.[0] || null)}
+            className="w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+          />
+          {imageFile && <p className="mt-1 text-xs text-gray-500">Selected: <span className="font-medium text-gray-700">{imageFile.name}</span></p>}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(['optionA', 'optionB', 'optionC', 'optionD'] as const).map((field) => (
             <label key={field} className="block text-sm font-semibold text-slate-700">Option {field.slice(-1)}
@@ -87,8 +124,8 @@ export default function AddQuestionModal({ isOpen, onClose }: AddQuestionModalPr
         </div>
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <button type="button" onClick={onClose} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 sm:w-auto sm:py-2">Cancel</button>
-          <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 sm:w-auto sm:py-2">{isSubmitting ? 'Adding...' : 'Add Question'}</button>
+          <button type="button" onClick={closeModal} disabled={uploading} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 disabled:opacity-50 sm:w-auto sm:py-2">Cancel</button>
+          <button type="submit" disabled={isSubmitting || uploading} className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 sm:w-auto sm:py-2">{uploading ? 'Uploading...' : 'Add Question'}</button>
         </div>
       </form>
     </div>
