@@ -9,7 +9,7 @@ generator client {
 
 model Settings {
   id              Int      @id @default(1)
-  examTitle       String   @default("General Examination")
+  examTitle       String   @default("QuizBox Examination")
   durationMinutes Int      @default(30)
   isExamActive    Boolean  @default(true)
 }
@@ -48,6 +48,7 @@ model Submission {
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   score       Int
   total       Int
+  warningCount Int      @default(0)
   answersJson String   // Stores student selections as JSON
   submittedAt DateTime @default(now())
 }
