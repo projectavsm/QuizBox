@@ -10,12 +10,18 @@ interface Question {
   optionD: string;
 }
 
+interface DisplayOption {
+  key: 'A' | 'B' | 'C' | 'D';
+  text: string;
+}
+
 interface QuestionViewProps {
   question: Question;
   currentIndex: number;
   totalQuestions: number;
   selectedOption: string | null;
   onSelectOption: (option: string) => void;
+  displayOptions?: DisplayOption[];
 }
 
 export default function QuestionView({
@@ -24,8 +30,9 @@ export default function QuestionView({
   totalQuestions,
   selectedOption,
   onSelectOption,
+  displayOptions,
 }: QuestionViewProps) {
-  const options = [
+  const options = displayOptions || [
     { key: 'A', text: question.optionA },
     { key: 'B', text: question.optionB },
     { key: 'C', text: question.optionC },
