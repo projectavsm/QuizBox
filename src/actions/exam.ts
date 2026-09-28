@@ -36,20 +36,12 @@ type ExamQuestionRecord = {
   optionC: string;
   optionD: string;
   correctOption: string;
-  optionOrder: OptionKey[];
 };
-
-function optionText(question: ExamQuestionRecord, option: OptionKey): string {
-  return question[`option${option}` as 'optionA' | 'optionB' | 'optionC' | 'optionD'];
-}
 
 async function getShuffledQuestionRecords(studentId: number): Promise<ExamQuestionRecord[]> {
   const questions = await prisma.question.findMany({ orderBy: { id: 'asc' } });
   const secret = process.env.QUIZBOX_SHUFFLE_SECRET || 'quizbox-local-exam';
-  return shuffle(questions, seedFrom(`questions:${secret}:${studentId}`)).map((question) => ({
-    ...question,
-    optionOrder: shuffle(optionKeys, seedFrom(`options:${secret}:${studentId}:${question.id}`)),
-  }));
+  return shuffle(questions, seedFrom(`questions:${secret}:${studentId}`));
 }
 
 export async function getShuffledExamQuestions(studentId: number) {
@@ -58,19 +50,21 @@ export async function getShuffledExamQuestions(studentId: number) {
     id: question.id,
     questionText: question.questionText,
     imageUrl: question.imageUrl,
-    optionA: optionText(question, question.optionOrder[0]),
-    optionB: optionText(question, question.optionOrder[1]),
-    optionC: optionText(question, question.optionOrder[2]),
-    optionD: optionText(question, question.optionOrder[3]),
+    optionA: question.optionA,
+    optionB: question.optionB,
+    optionC: question.optionC,
+    optionD: question.optionD,
   }));
 }
 
 export async function submitExamAction({
   studentId,
   answers,
+  warningCount,
 }: {
   studentId: string;
   answers: Record<string, string>;
+  warningCount: number;
 }) {
   try {
     const parsedStudentId = parseInt(studentId, 10);
@@ -101,9 +95,7 @@ export async function submitExamAction({
     let score = 0;
     const normalizedAnswers: Record<string, string> = {};
     questions.forEach((question) => {
-      const displayedAnswer = answers[String(question.id)]?.toUpperCase() as OptionKey | undefined;
-      const displayedIndex = displayedAnswer ? optionKeys.indexOf(displayedAnswer) : -1;
-      const originalAnswer = displayedIndex >= 0 ? question.optionOrder[displayedIndex] : undefined;
+      const originalAnswer = answers[String(question.id)]?.toUpperCase() as OptionKey | undefined;
       if (originalAnswer) normalizedAnswers[String(question.id)] = originalAnswer;
       if (originalAnswer && originalAnswer === question.correctOption.toUpperCase()) {
         score++;
@@ -120,6 +112,7 @@ export async function submitExamAction({
           data: {
             score,
             total: questions.length,
+            warningCount: Math.max(0, Math.floor(warningCount)),
             answersJson: JSON.stringify(normalizedAnswers),
             submittedAt: new Date(),
           },
@@ -129,6 +122,7 @@ export async function submitExamAction({
             studentId: student.id,
             score,
             total: questions.length,
+            warningCount: Math.max(0, Math.floor(warningCount)),
             answersJson: JSON.stringify(normalizedAnswers),
           },
         });
