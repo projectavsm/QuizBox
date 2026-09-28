@@ -126,7 +126,16 @@ export async function registerStudentAction(data: StudentRegistrationInput) {
 
     const existingStudent = await prisma.student.findFirst({
       where: { rollNumber, gradeClass, section },
+      include: { submission: true },
     });
+
+    if (existingStudent?.submission) {
+      return {
+        success: false,
+        message: `Roll Number ${rollNumber} in Class ${gradeClass} has already completed this exam. Please check your roll number or contact the supervisor.`,
+      };
+    }
+
     const student = existingStudent ?? await prisma.student.create({
       data: { name, gradeClass, section, rollNumber },
     });

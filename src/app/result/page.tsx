@@ -1,5 +1,5 @@
-import { finishStudentSessionAction } from '@/actions/student';
 import { prisma } from '@/lib/prisma';
+import FinishExamButton from '@/components/exam/FinishExamButton';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -38,11 +38,7 @@ export default async function ResultPage() {
           <div className="flex items-center justify-between gap-4 p-4"><dt className="text-sm text-slate-400">Submission Time</dt><dd className="text-right font-semibold">{submission.submittedAt.toLocaleString()}</dd></div>
         </dl>
 
-        <form action={finishStudentSessionAction}>
-          <button type="submit" className="w-full rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500">
-            Finish &amp; Return Home
-          </button>
-        </form>
+        <FinishExamButton />
       </section>
     </main>
   );

@@ -40,7 +40,7 @@ export default function HomePage() {
         <label className="block text-sm font-medium">Grade/Class<input required name="gradeClass" type="text" className="mt-1 w-full rounded border p-3" /></label>
         <label className="block text-sm font-medium">Section<input required name="section" type="text" className="mt-1 w-full rounded border p-3" /></label>
         <label className="block text-sm font-medium">Roll Number<input required name="rollNumber" type="text" className="mt-1 w-full rounded border p-3" /></label>
-        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {error && <p role="alert" aria-live="polite" className="rounded border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</p>}
         <button disabled={isSubmitting} type="submit" className="w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
           {isSubmitting ? 'Registering...' : 'Start Exam'}
         </button>
