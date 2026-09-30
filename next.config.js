@@ -5,7 +5,10 @@ const nextConfig = {
     'localhost:3000',
     '*.ngrok-free.app',
     '*.ngrok.io',
+    'quizbox-exam.loca.lt',
+    '*.loca.lt',
+    '*.trycloudflare.com'
   ],
 };
 
-module.exports = nextConfig;
+module.exports = nextConfig;  

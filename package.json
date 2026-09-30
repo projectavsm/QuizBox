@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
+    "tunnel": "powershell -Command \"npx cloudflared tunnel --url http://localhost:3000 2>&1 | Select-String -Pattern 'https://[a-zA-Z0-9-]+\\.trycloudflare\\.com' | ForEach-Object { $_.Matches.Value }\"",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
