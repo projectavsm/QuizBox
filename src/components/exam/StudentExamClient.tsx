@@ -11,6 +11,23 @@ interface Question { id: number; questionText: string; imageUrl?: string | null;
 interface StudentExamClientProps { initialQuestions: Question[]; durationMinutes: number; examTitle: string; studentId: number; }
 interface DisplayOption { key: 'A' | 'B' | 'C' | 'D'; sourceKey: 'A' | 'B' | 'C' | 'D'; text: string; }
 const optionLabels = ['A', 'B', 'C', 'D'] as const;
+type SubmissionPayload = Parameters<typeof submitExamAction>[0];
+
+async function submitWithRetry(payload: SubmissionPayload, retries = 3) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      return await submitExamAction(payload);
+    } catch (error) {
+      lastError = error;
+      if (attempt === retries - 1) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Exam submission failed.');
+}
 
 export default function StudentExamClient({ initialQuestions, durationMinutes, examTitle, studentId }: StudentExamClientProps) {
   const endTimeStorageKey = `quizbox_exam_end_time_${studentId}`;
@@ -58,8 +75,16 @@ export default function StudentExamClient({ initialQuestions, durationMinutes, e
   const handleSubmitExam = useCallback(async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    const payload: SubmissionPayload = {
+      answers: Object.fromEntries(
+        Object.entries(answers).map(([questionId, answer]) => [questionId.trim(), answer.trim()]),
+      ),
+      studentId: String(studentId).trim(),
+      warningCount,
+    };
+
     try {
-      const result = await submitExamAction({ answers, studentId: String(studentId), warningCount });
+      const result = await submitWithRetry(payload);
       if (result.success) {
         window.localStorage.removeItem(endTimeStorageKey);
         window.location.replace('/result');
@@ -67,11 +92,13 @@ export default function StudentExamClient({ initialQuestions, durationMinutes, e
         console.error('Submission failed:', result.message);
         setIsSubmitting(false);
         setIsAutoSubmitting(false);
+        window.alert('Your exam could not be submitted. Please click "Submit Exam" again.');
       }
     } catch (error) {
       console.error('Submission failed:', error);
-      window.localStorage.removeItem(endTimeStorageKey);
-      window.location.replace('/result');
+      setIsSubmitting(false);
+      setIsAutoSubmitting(false);
+      window.alert('Your exam could not be submitted. Please click "Submit Exam" again.');
     }
   }, [answers, isSubmitting, studentId, warningCount]);
 

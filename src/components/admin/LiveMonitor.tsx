@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { getLiveStatsAction } from '@/actions/admin';
 
 type LiveStats = {
@@ -19,36 +19,22 @@ type LiveStats = {
 };
 
 export default function LiveMonitor() {
-  const [isLive, setIsLive] = useState(true);
   const [stats, setStats] = useState<LiveStats | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  async function handleRefreshStats() {
+    if (isRefreshing) return;
 
-    const fetchStats = async () => {
-      if (document.visibilityState === 'hidden') return;
+    setIsRefreshing(true);
+    try {
       const result = await getLiveStatsAction();
-      if (isMounted && result.success && result.stats) setStats(result.stats);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void fetchStats();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    if (!isLive) return () => {
-      isMounted = false;
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-
-    if (document.visibilityState === 'visible') void fetchStats();
-    const interval = window.setInterval(() => void fetchStats(), 3000);
-    return () => {
-      isMounted = false;
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isLive]);
+      if (result.success && result.stats) setStats(result.stats);
+    } catch (error) {
+      console.error('Failed to fetch live stats:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   const cards = [
     { label: 'Total Registered', value: stats?.totalRegistered ?? 0, color: 'text-indigo-600' },
@@ -62,10 +48,17 @@ export default function LiveMonitor() {
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 id="live-monitor-title" className="text-lg font-bold text-slate-900">Live Monitoring</h2>
-          <p className="text-sm text-slate-500">Updates every three seconds while live mode is enabled.</p>
+          <p className="text-sm text-slate-500">Refresh when you need the latest submission metrics.</p>
         </div>
-        <button type="button" onClick={() => setIsLive((current) => !current)} className={`rounded-lg px-3 py-2 text-sm font-semibold ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-          {isLive ? 'Live' : 'Paused'}
+        <button
+          type="button"
+          onClick={() => void handleRefreshStats()}
+          disabled={isRefreshing}
+          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isRefreshing ? (
+            <span className="flex items-center gap-2"><span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Refreshing...</span>
+          ) : 'Refresh Stats'}
         </button>
       </div>
 

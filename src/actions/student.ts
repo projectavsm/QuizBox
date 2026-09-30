@@ -23,9 +23,12 @@ export async function finishStudentSessionAction() {
 
 export async function registerStudent(input: StudentRegistrationInput) {
   try {
-    const { name, gradeClass, section, rollNumber } = input;
+    const name = input.name.trim();
+    const gradeClass = input.gradeClass.trim();
+    const section = input.section.trim().toUpperCase() || 'A';
+    const rollNumber = input.rollNumber.trim();
 
-    if (!name || !gradeClass || !section || !rollNumber) {
+    if (!name || !gradeClass || !rollNumber) {
       return { success: false, error: 'All fields are required.' };
     }
 
@@ -114,14 +117,32 @@ export async function getCurrentStudentSession() {
 }
 
 export async function registerStudentAction(data: StudentRegistrationInput) {
-  try {
-    const name = data.name.trim();
-    const gradeClass = data.gradeClass.trim();
-    const section = data.section.trim();
-    const rollNumber = data.rollNumber.trim();
+  let studentId: number;
 
-    if (!name || !gradeClass || !section || !rollNumber) {
+  try {
+    const name = typeof data?.name === 'string' ? data.name.trim() : '';
+    const rollNumber = typeof data?.rollNumber === 'string' ? data.rollNumber.trim() : '';
+    const gradeClass = typeof data?.gradeClass === 'string' ? data.gradeClass.trim() : '';
+    const section = typeof data?.section === 'string' ? data.section.trim().toUpperCase() || 'A' : 'A';
+
+    if (!name || !gradeClass || !rollNumber) {
       return { success: false, message: 'All fields are required.' };
+    }
+
+    if (name.length < 2 || name.length > 50 || !/^[A-Za-z]+(?: [A-Za-z]+)*$/.test(name)) {
+      return { success: false, message: 'Invalid name. Use 2 to 50 letters and spaces only.' };
+    }
+
+    if (!/^(?:[1-9]|1[0-2])$/.test(gradeClass)) {
+      return { success: false, message: 'Invalid grade/class. Please enter a number between 1 and 12.' };
+    }
+
+    if (!/^[A-Z0-9]{1,3}$/.test(section)) {
+      return { success: false, message: 'Invalid section. Use 1 to 3 uppercase letters or numbers.' };
+    }
+
+    if (!/^[1-9]\d{0,3}$/.test(rollNumber)) {
+      return { success: false, message: 'Invalid roll number. Please enter a number between 1 and 9999.' };
     }
 
     const existingStudent = await prisma.student.findFirst({
@@ -148,9 +169,12 @@ export async function registerStudentAction(data: StudentRegistrationInput) {
       path: '/',
     });
 
-    logger.action('registerStudentAction', `Student #${student.id} registered`);
-    return { success: true, studentId: String(student.id) };
+    studentId = student.id;
   } catch (error: unknown) {
     return { success: false, message: handleServerError(error, 'registerStudentAction') };
   }
+
+  logger.action('registerStudentAction', `Student #${studentId} registered`);
+  redirect('/test');
+  return { success: true, studentId: String(studentId) };
 }

@@ -223,7 +223,20 @@ export async function getStudentSubmissionDetail(submissionId: number) {
   try {
     const submission = await prisma.submission.findUnique({
       where: { id: submissionId },
-      include: { student: true },
+      select: {
+        score: true,
+        total: true,
+        warningCount: true,
+        answersJson: true,
+        student: {
+          select: {
+            name: true,
+            gradeClass: true,
+            section: true,
+            rollNumber: true,
+          },
+        },
+      },
     });
 
     if (!submission) return null;
@@ -259,6 +272,7 @@ export async function getStudentSubmissionDetail(submissionId: number) {
       },
       score: submission.score,
       total: submission.total,
+      warningCount: submission.warningCount,
       breakdown,
     };
   } catch (error) {
